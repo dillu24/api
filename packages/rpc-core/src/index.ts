@@ -13,7 +13,7 @@ import { catchError, map, publishReplay, refCount, switchMap } from 'rxjs/operat
 import jsonrpc from '@polkadot/jsonrpc';
 import jsonrpcMethod from '@polkadot/jsonrpc/create/method';
 import jsonrpcParam from '@polkadot/jsonrpc/create/param';
-import { Option, StorageKey, Vec, createClass, createTypeUnsafe } from '@polkadot/types';
+import { StorageKey, Vec, createTypeUnsafe } from '@polkadot/types';
 import { assert, isFunction, isNull, isNumber, isUndefined, logger, u8aToU8a } from '@polkadot/util';
 
 import { drr } from './rxjs';
@@ -377,7 +377,6 @@ export default class Rpc implements RpcInterface {
   private formatStorageData (key: StorageKey, value: string | null): Codec {
     // single return value (via state.getStorage), decode the value based on the
     // outputType that we have specified. Fallback to Raw on nothing
-    const type = key.outputType || 'Raw';
     const meta = key.meta || EMPTY_META;
     const isEmpty = isNull(value);
 
@@ -389,22 +388,17 @@ export default class Rpc implements RpcInterface {
         ? value
         : u8aToU8a(value);
 
-    if (meta.modifier.isOptional) {
-      return new Option(
-        this.registry,
-        createClass(this.registry, type),
-        isEmpty
+    return createTypeUnsafe(this.registry, key.outputType, [
+      isEmpty
+        ? meta.modifier.isOptional
           ? null
-          : createTypeUnsafe(this.registry, type, [input], true)
-      );
-    }
-
-    return createTypeUnsafe(this.registry, type, [isEmpty ? meta.fallback : input], true);
+          : meta.fallback
+        : input
+    ], true);
   }
 
   private formatStorageSet (key: StorageKey, changes: [string, string | null][], witCache: boolean): Codec {
     // Fallback to Raw (i.e. just the encoding) if we don't have a specific type
-    const type = key.outputType || 'Raw';
     const hexKey = key.toHex();
     const meta = key.meta || EMPTY_META;
     const found = changes.find(([key]): boolean => key === hexKey);
@@ -426,16 +420,12 @@ export default class Rpc implements RpcInterface {
     // will increase memory beyond what is allowed.
     this.#storageCache.set(hexKey, value);
 
-    if (meta.modifier.isOptional) {
-      return new Option(
-        this.registry,
-        createClass(this.registry, type),
-        isEmpty
+    return createTypeUnsafe(this.registry, key.outputType, [
+      isEmpty
+        ? meta.modifier.isOptional
           ? null
-          : createTypeUnsafe(this.registry, type, [input], true)
-      );
-    }
-
-    return createTypeUnsafe(this.registry, type, [isEmpty ? meta.fallback : input], true);
+          : meta.fallback
+        : input
+    ], true);
   }
 }

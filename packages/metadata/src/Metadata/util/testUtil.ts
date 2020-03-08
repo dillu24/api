@@ -47,8 +47,8 @@ export function defaultValues (registry: Registry, rpcData: string, withThrow = 
     const metadata = new Metadata(registry, rpcData);
 
     metadata.asLatest.modules.filter(({ storage }): boolean => storage.isSome).forEach((mod): void => {
-      mod.storage.unwrap().items.forEach(({ fallback, name, type }): void => {
-        const inner = unwrapStorageType(type);
+      mod.storage.unwrap().items.forEach(({ fallback, modifier, name, type }): void => {
+        const inner = unwrapStorageType(type, modifier.isOptional);
         const location = `${mod.name}.${name}: ${inner}`;
 
         it(`creates default types for ${location}`, (): void => {

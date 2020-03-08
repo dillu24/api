@@ -43,22 +43,33 @@ const HASHER_MAP: Record<keyof typeof metadataDefs.types.StorageHasherV10._enum,
 };
 const HASHER_OPTS = Object.values(HASHER_MAP);
 
-// we unwrap the type here, turning into an output usable for createType
 /** @internal */
-export function unwrapStorageType (type: StorageEntryTypeLatest): keyof InterfaceTypes {
+export function formatType (type: StorageEntryTypeLatest, [pre, post]: [string, string]): string {
   if (type.isPlain) {
-    return type.asPlain.toString() as keyof InterfaceTypes;
+    return `${pre}${type.asPlain.toString()}${post}`;
   } else if (type.isDoubleMap) {
-    return type.asDoubleMap.value.toString() as keyof InterfaceTypes;
+    return `${pre}${type.asDoubleMap.value.toString()}${post}`;
   }
 
   const map = type.asMap;
 
   if (map.linked.isTrue) {
-    return `(${map.value.toString()}, Linkage<${map.key.toString()}>)` as keyof InterfaceTypes;
+    pre = `(${pre}`;
+    post = `${post}, Linkage<${map.key.toString()}>)`;
   }
 
-  return map.value.toString() as keyof InterfaceTypes;
+  return `${pre}${map.value.toString()}${post}`;
+}
+
+// we unwrap the type here, turning into an output usable for createType
+/** @internal */
+export function unwrapStorageType (type: StorageEntryTypeLatest, withOptional: boolean): keyof InterfaceTypes {
+  return formatType(
+    type,
+    withOptional
+      ? ['Option<', '>']
+      : ['', '']
+  ) as keyof InterfaceTypes;
 }
 
 /** @internal */
@@ -147,9 +158,9 @@ export default class StorageKey extends Bytes {
 
   private _meta?: StorageEntryMetadataLatest;
 
-  private readonly _method?: string;
+  private _outputType: string;
 
-  private readonly _outputType: string;
+  private readonly _method?: string;
 
   private readonly _section?: string;
 
@@ -185,12 +196,12 @@ export default class StorageKey extends Bytes {
     if (value instanceof StorageKey) {
       return value.outputType;
     } else if (isFunction(value)) {
-      return unwrapStorageType(value.meta.type);
+      return unwrapStorageType(value.meta.type, value.meta.modifier.isOptional);
     } else if (Array.isArray(value)) {
       const [fn] = value;
 
       if (fn.meta) {
-        return unwrapStorageType(fn.meta.type);
+        return unwrapStorageType(fn.meta.type, fn.meta.modifier.isOptional);
       }
     }
 
@@ -238,6 +249,7 @@ export default class StorageKey extends Bytes {
    */
   public setMeta (meta?: StorageEntryMetadataLatest): this {
     this._meta = meta;
+    this._outputType = StorageKey.getType(this);
 
     return this.decodeArgsFromMeta();
   }

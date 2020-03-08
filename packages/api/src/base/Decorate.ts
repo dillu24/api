@@ -343,18 +343,20 @@ export default abstract class Decorate<ApiType extends ApiTypes> extends Events 
   }
 
   private decorateStorageRange<ApiType extends ApiTypes> (decorated: QueryableStorageEntry<ApiType>, args: [Arg?, Arg?], range: [Hash, Hash?]): Observable<[Hash, Codec][]> {
-    const outputType = unwrapStorageType(decorated.creator.meta.type);
+    const outputType = unwrapStorageType(decorated.creator.meta.type, decorated.creator.meta.modifier.isOptional);
 
     return this._rpcCore.state
       .queryStorage([decorated.key(...args)], ...range)
-      .pipe(map((result: StorageChangeSet[]): [Hash, Codec][] =>
-        result
-          .filter((change): change is StorageChangeSet => !!change.changes.length)
-          .map(({ block, changes: [[, value]] }): [Hash, Codec] => [
-            block,
-            this.createType(outputType, value.unwrapOrDefault())
-          ])
-      ));
+      .pipe(
+        map((result: StorageChangeSet[]): [Hash, Codec][] =>
+          result
+            .filter((change): change is StorageChangeSet => !!change.changes.length)
+            .map(({ block, changes: [[, value]] }): [Hash, Codec] => [
+              block,
+              this.createType(outputType, value.unwrapOr(undefined))
+            ])
+        )
+      );
   }
 
   private decorateStorageLinked<ApiType extends ApiTypes> (creator: StorageEntry, decorateMethod: DecorateMethod<ApiType>): ReturnType<DecorateMethod<ApiType>> {
@@ -432,11 +434,7 @@ export default abstract class Decorate<ApiType extends ApiTypes> extends Events 
   private retrieveMapEntries ({ iterKey, meta }: StorageEntry, arg?: Arg): Observable<[StorageKey, Codec][]> {
     assert(iterKey && (meta.type.isMap || meta.type.isDoubleMap), 'entries can only be retrieved on maps, linked maps and double maps');
 
-    let outputType: any = unwrapStorageType(meta.type);
-
-    if (meta.modifier.isOptional) {
-      outputType = `Option<${outputType}>`;
-    }
+    const outputType = unwrapStorageType(meta.type, meta.modifier.isOptional);
 
     return this._rpcCore.state
       // TODO This should really be some sort of subscription, so we can get stuff as
