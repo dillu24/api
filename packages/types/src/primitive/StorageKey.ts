@@ -63,10 +63,10 @@ export function formatType (type: StorageEntryTypeLatest, [pre, post]: [string, 
 
 // we unwrap the type here, turning into an output usable for createType
 /** @internal */
-export function unwrapStorageType (type: StorageEntryTypeLatest, withOptional: boolean): keyof InterfaceTypes {
+export function unwrapStorageType ({ type, modifier }: StorageEntryMetadataLatest): keyof InterfaceTypes {
   return formatType(
     type,
-    withOptional
+    modifier.isOptional
       ? ['Option<', '>']
       : ['', '']
   ) as keyof InterfaceTypes;
@@ -196,12 +196,12 @@ export default class StorageKey extends Bytes {
     if (value instanceof StorageKey) {
       return value.outputType;
     } else if (isFunction(value)) {
-      return unwrapStorageType(value.meta.type, value.meta.modifier.isOptional);
+      return unwrapStorageType(value.meta);
     } else if (Array.isArray(value)) {
       const [fn] = value;
 
       if (fn.meta) {
-        return unwrapStorageType(fn.meta.type, fn.meta.modifier.isOptional);
+        return unwrapStorageType(fn.meta);
       }
     }
 

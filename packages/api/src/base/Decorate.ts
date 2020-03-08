@@ -17,7 +17,7 @@ import DecoratedMeta from '@polkadot/metadata/Decorated';
 import getHasher from '@polkadot/metadata/Decorated/storage/fromMetadata/getHasher';
 import RpcCore from '@polkadot/rpc-core';
 import { WsProvider } from '@polkadot/rpc-provider';
-import { Metadata, Null, Option, Raw, Text, TypeRegistry, u64 } from '@polkadot/types';
+import { Metadata, Null, Option, Text, TypeRegistry, u64 } from '@polkadot/types';
 import Linkage, { LinkageResult } from '@polkadot/types/codec/Linkage';
 import { DEFAULT_VERSION as EXTRINSIC_DEFAULT_VERSION } from '@polkadot/types/extrinsic/constants';
 import StorageKey, { StorageEntry, unwrapStorageType } from '@polkadot/types/primitive/StorageKey';
@@ -343,7 +343,7 @@ export default abstract class Decorate<ApiType extends ApiTypes> extends Events 
   }
 
   private decorateStorageRange<ApiType extends ApiTypes> (decorated: QueryableStorageEntry<ApiType>, args: [Arg?, Arg?], range: [Hash, Hash?]): Observable<[Hash, Codec][]> {
-    const outputType = unwrapStorageType(decorated.creator.meta.type, decorated.creator.meta.modifier.isOptional);
+    const outputType = unwrapStorageType(decorated.creator.meta);
 
     return this._rpcCore.state
       .queryStorage([decorated.key(...args)], ...range)
@@ -434,7 +434,7 @@ export default abstract class Decorate<ApiType extends ApiTypes> extends Events 
   private retrieveMapEntries ({ iterKey, meta }: StorageEntry, arg?: Arg): Observable<[StorageKey, Codec][]> {
     assert(iterKey && (meta.type.isMap || meta.type.isDoubleMap), 'entries can only be retrieved on maps, linked maps and double maps');
 
-    const outputType = unwrapStorageType(meta.type, meta.modifier.isOptional);
+    const outputType = unwrapStorageType(meta);
 
     return this._rpcCore.state
       // TODO This should really be some sort of subscription, so we can get stuff as
@@ -450,19 +450,21 @@ export default abstract class Decorate<ApiType extends ApiTypes> extends Events 
         ))
       )
       .pipe(
-        switchMap((keys): Observable<[StorageKey[], Option<Raw>[]]> =>
-          combineLatest([
+        switchMap((keys): Observable<[StorageKey[], Codec[]]> => {
+          console.error(keys.map((k) => k.toHuman()));
+          return combineLatest([
             of(keys.map((key) => key.decodeArgsFromMeta(meta))),
             // since we have a default constructed key, we have Option<Raw> as the result
-            this._rpcCore.state.subscribeStorage<Option<Raw>[]>(keys)
+            this._rpcCore.state.subscribeStorage(keys)
           ])
-        ),
-        map(([keys, values]): [StorageKey, Codec][] =>
-          keys.map((key, index): [StorageKey, Codec] => [
+        }),
+        map(([keys, values]): [StorageKey, Codec][] => {
+          console.error(keys, values);
+          return keys.map((key, index): [StorageKey, Codec] => [
             key,
-            this.createType(outputType, values[index].unwrapOr(undefined))
+            values[index]
           ])
-        )
+        })
       );
   }
 

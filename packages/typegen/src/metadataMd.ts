@@ -173,19 +173,19 @@ function addStorage (metadata: MetadataLatest): string {
         name: sectionName,
         items: moduleMetadata.storage.unwrap().items
           .sort(sortByName)
-          .map((func) => {
-            const arg = func.type.isMap
-              ? ('`' + func.type.asMap.key.toString() + '`')
-              : func.type.isDoubleMap
-                ? ('`' + func.type.asDoubleMap.key1.toString() + ', ' + func.type.asDoubleMap.key2.toString() + '`')
+          .map((meta) => {
+            const arg = meta.type.isMap
+              ? ('`' + meta.type.asMap.key.toString() + '`')
+              : meta.type.isDoubleMap
+                ? ('`' + meta.type.asDoubleMap.key1.toString() + ', ' + meta.type.asDoubleMap.key2.toString() + '`')
                 : '';
-            const methodName = stringLowerFirst(func.name.toString());
-            const result = unwrapStorageType(func.type, func.modifier.isOptional);
+            const methodName = stringLowerFirst(meta.name.toString());
+            const result = unwrapStorageType(meta);
 
             return {
               name: `${methodName}(${arg}): ` + '`' + result + '`',
               interface: '`' + `api.query.${sectionName}.${methodName}` + '`',
-              ...(func.documentation.length && { summary: func.documentation })
+              ...(meta.documentation.length && { summary: meta.documentation })
             };
           })
       };

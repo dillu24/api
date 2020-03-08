@@ -390,9 +390,7 @@ export default class Rpc implements RpcInterface {
 
     return createTypeUnsafe(this.registry, key.outputType, [
       isEmpty
-        ? meta.modifier.isOptional
-          ? null
-          : meta.fallback
+        ? meta.fallback
         : input
     ], true);
   }
@@ -422,9 +420,7 @@ export default class Rpc implements RpcInterface {
 
     return createTypeUnsafe(this.registry, key.outputType, [
       isEmpty
-        ? meta.modifier.isOptional
-          ? null
-          : meta.fallback
+        ? meta.fallback
         : input
     ], true);
   }

@@ -4,12 +4,12 @@
 
 import { ApiPromise, WsProvider } from '@polkadot/api';
 
-describe.skip('misc quick tests', (): void => {
-  it.skip('handles doublemap entries', async (): Promise<void> => {
+describe('misc quick tests', (): void => {
+  it('handles doublemap entries', async (): Promise<void> => {
     const api = await new ApiPromise().isReady;
     const activeEra = await api.query.staking.activeEra();
 
-    console.log(JSON.stringify(
+    console.error(JSON.stringify(
       await api.query.staking.erasStakers.entries(activeEra.unwrapOrDefault().index)
     ));
   });
@@ -18,7 +18,7 @@ describe.skip('misc quick tests', (): void => {
     const provider = new WsProvider('wss://kusama-rpc.polkadot.io');
     const api = await new ApiPromise({ provider }).isReady;
 
-    console.log(JSON.stringify(
+    console.error(JSON.stringify(
       await api.query.society.defenderVotes('Dab4bfYTZRUDMWjYAUQuFbDreQ9mt7nULWu3Dw7jodbzVe9')
     ));
   });
