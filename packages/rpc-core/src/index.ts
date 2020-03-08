@@ -14,7 +14,7 @@ import jsonrpc from '@polkadot/jsonrpc';
 import jsonrpcMethod from '@polkadot/jsonrpc/create/method';
 import jsonrpcParam from '@polkadot/jsonrpc/create/param';
 import { StorageKey, Vec, createTypeUnsafe } from '@polkadot/types';
-import { assert, isFunction, isNull, isNumber, isUndefined, logger, u8aToU8a } from '@polkadot/util';
+import { assert, isFunction, isNumber, isUndefined, logger } from '@polkadot/util';
 
 import { drr } from './rxjs';
 
@@ -331,12 +331,6 @@ export default class Rpc implements RpcInterface {
     );
   }
 
-  private treatAsHex (key: StorageKey): boolean {
-    // :code is problematic - it does not have the length attached, which is
-    // unlike all other storage entries where it is indeed properly encoded
-    return ['0x3a636f6465'].includes(key.toHex());
-  }
-
   private formatOutput (method: RpcMethod, params: Codec[], result?: any): Codec | Codec[] {
     if (method.type === 'StorageData') {
       const key = params[0] as StorageKey;
@@ -375,30 +369,15 @@ export default class Rpc implements RpcInterface {
   }
 
   private formatStorageData (key: StorageKey, value: string | null): Codec {
-    // single return value (via state.getStorage), decode the value based on the
-    // outputType that we have specified. Fallback to Raw on nothing
-    const meta = key.meta || EMPTY_META;
-    const isEmpty = isNull(value);
+    const { fallback } = key.meta || EMPTY_META;
 
-    // we convert to Uint8Array since it maps to the raw encoding, all
-    // data will be correctly encoded (incl. numbers, excl. :code)
-    const input = isEmpty
-      ? null
-      : this.treatAsHex(key)
-        ? value
-        : u8aToU8a(value);
-
-    return createTypeUnsafe(this.registry, key.outputType, [
-      isEmpty
-        ? meta.fallback
-        : input
-    ], true);
+    return createTypeUnsafe(this.registry, key.outputType, [value || fallback], true);
   }
 
   private formatStorageSet (key: StorageKey, changes: [string, string | null][], witCache: boolean): Codec {
     // Fallback to Raw (i.e. just the encoding) if we don't have a specific type
     const hexKey = key.toHex();
-    const meta = key.meta || EMPTY_META;
+    const { fallback } = key.meta || EMPTY_META;
     const found = changes.find(([key]): boolean => key === hexKey);
 
     // if we don't find the value, this is our fallback
@@ -408,20 +387,12 @@ export default class Rpc implements RpcInterface {
     const value = isUndefined(found)
       ? (witCache && this.#storageCache.get(hexKey)) || null
       : found[1];
-    const isEmpty = isNull(value);
-    const input = isEmpty || this.treatAsHex(key)
-      ? value
-      : u8aToU8a(value);
 
     // store the retrieved result - the only issue with this cache is that there is no
     // clearing of it, so very long running processes (not just a couple of hours, longer)
     // will increase memory beyond what is allowed.
     this.#storageCache.set(hexKey, value);
 
-    return createTypeUnsafe(this.registry, key.outputType, [
-      isEmpty
-        ? meta.fallback
-        : input
-    ], true);
+    return createTypeUnsafe(this.registry, key.outputType, [value || fallback], true);
   }
 }

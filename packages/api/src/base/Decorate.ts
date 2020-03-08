@@ -450,21 +450,19 @@ export default abstract class Decorate<ApiType extends ApiTypes> extends Events 
         ))
       )
       .pipe(
-        switchMap((keys): Observable<[StorageKey[], Codec[]]> => {
-          console.error(keys.map((k) => k.toHuman()));
-          return combineLatest([
+        switchMap((keys): Observable<[StorageKey[], Codec[]]> =>
+          combineLatest([
             of(keys.map((key) => key.decodeArgsFromMeta(meta))),
             // since we have a default constructed key, we have Option<Raw> as the result
             this._rpcCore.state.subscribeStorage(keys)
           ])
-        }),
-        map(([keys, values]): [StorageKey, Codec][] => {
-          console.error(keys, values);
-          return keys.map((key, index): [StorageKey, Codec] => [
+        ),
+        map(([keys, values]): [StorageKey, Codec][] =>
+          keys.map((key, index): [StorageKey, Codec] => [
             key,
-            values[index]
+            this.createType(outputType, values[index])
           ])
-        })
+        )
       );
   }
 

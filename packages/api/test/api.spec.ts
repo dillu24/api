@@ -4,8 +4,8 @@
 
 import { ApiPromise, WsProvider } from '@polkadot/api';
 
-describe('misc quick tests', (): void => {
-  it('handles doublemap entries', async (): Promise<void> => {
+describe.skip('misc quick tests', (): void => {
+  it.skip('handles doublemap entries', async (): Promise<void> => {
     const api = await new ApiPromise().isReady;
     const activeEra = await api.query.staking.activeEra();
 
